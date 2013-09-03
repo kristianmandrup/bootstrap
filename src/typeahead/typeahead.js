@@ -82,6 +82,7 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
         };
       };
 
+      // getMatches skips query parsers
       this.getMatches = function (inputValue) {
         var ctrl = this;
         var locals = {$viewValue: inputValue};
@@ -191,8 +192,31 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
 
       typeaheadCtrl.resetMatches();
 
+      if (minSearch) {
+        typeaheadCtrl.queryParsers.push(function (query) {
+          if (query && query.length >= minSearch) {
+            return query;
+          }
+          // This short-circuits the query parsing
+          return $q.reject('Query shorter than min length.');
+        });
+      }
+
       //Declare the timeout promise var outside the function scope so that stacked calls can be cancelled later 
       var timeoutPromise;
+
+      if (waitTime > 0) {
+        typeaheadCtrl.queryParsers.push(function (query) {
+          if (timeoutPromise) {
+            $timeout.cancel(timeoutPromise);//cancel previous timeout
+            timeoutPromise = null;
+          }
+          timeoutPromise = $timeout(function () {
+            return query;
+          }, waitTime);
+          return timeoutPromise;
+        });
+      }
 
       //plug into $parsers pipeline to open a typeahead on view changes initiated from DOM
       //$parsers kick-in on all the changes coming from the view as well as manually triggered by $setViewValue
@@ -201,20 +225,7 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
       // This also depends on the ngModel controller
       modelCtrl.$parsers.unshift(function (inputValue) {
 
-        // Move these into query processors
-        if (inputValue && inputValue.length >= minSearch) {
-          // Use debounce utility here.
-          if (waitTime > 0) {
-            if (timeoutPromise) {
-              $timeout.cancel(timeoutPromise);//cancel previous timeout
-            }
-            timeoutPromise = $timeout(function () {
-              typeaheadCtrl.initQuery(inputValue);
-            }, waitTime);
-          } else {
-            typeaheadCtrl.initQuery(inputValue);
-          }
-        }
+        typeaheadCtrl.initQuery(inputValue);
 
         // This really might be another
         if (isEditable) {
