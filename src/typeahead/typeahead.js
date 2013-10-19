@@ -225,6 +225,7 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
       // This also depends on the ngModel controller
       modelCtrl.$parsers.unshift(function (inputValue) {
 
+        typeaheadCtrl.resetMatches();
         typeaheadCtrl.initQuery(inputValue);
 
         // This really might be another
