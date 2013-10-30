@@ -157,7 +157,9 @@ angular.module('ui.bootstrap.collapse',['ui.bootstrap.transition'])
           element
             .removeClass('collapse')
             .removeClass('collapsed')
-            .addClass('collapsing');
+            .addClass('collapsing')
+			// 2013-09-30: WIWO temporary IE8 fix.
+			.removeClass('ng-hide');
           helpers[dimension](element, 0);
         },
         
@@ -175,7 +177,10 @@ angular.module('ui.bootstrap.collapse',['ui.bootstrap.transition'])
         afterShow: function(dimension) {
           element
             .removeClass('collapsing')
-            .addClass('in');
+            .addClass('in')
+			// 2013-09-30: WIWO temporary IE8 fix.
+			.removeClass('ng-hide');
+			
           helpers[dimension](element, 'auto');
           isCollapsed = false;
         },
@@ -184,7 +189,9 @@ angular.module('ui.bootstrap.collapse',['ui.bootstrap.transition'])
           element
             .removeClass('collapsing')
             .addClass('collapsed')
-            .addClass('collapse');
+            .addClass('collapse')
+			// 2013-09-30: WIWO temporary IE8 fix.
+			.addClass('ng-hide');
           isCollapsed = true;
         }
       };
