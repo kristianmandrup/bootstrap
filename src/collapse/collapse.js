@@ -32,8 +32,6 @@ angular.module('ui.bootstrap.collapse',['ui.bootstrap.transition'])
       var isCollapsed;
       var initialAnimSkip = true;
       if ($sniffer.transitions){
-        console.log('Adding scrollHeight watch.');
-        
         scope.$watch(function (){ return element[0].scrollHeight; }, function (value) {
           //The listener is called when scollHeight changes
           //It actually does on 2 scenarios: 
@@ -50,8 +48,6 @@ angular.module('ui.bootstrap.collapse',['ui.bootstrap.transition'])
             }
           }
         });
-      } else {
-        console.log('!!! Skipping scrollHeight watch.');
       }
       
       scope.$watch(attrs.collapse, function(value) {
