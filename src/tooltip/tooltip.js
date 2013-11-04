@@ -100,7 +100,7 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
           'title="'+startSym+'tt_title'+endSym+'" '+
           'content="'+startSym+'tt_content'+endSym+'" '+
           'placement="'+startSym+'tt_placement'+endSym+'" '+
-          'animation="tt_animation()" '+
+          // 'animation="tt_animation()" '+
           'is-open="tt_isOpen"'+
           '>'+
         '</'+ directiveName +'-popup>';
@@ -228,6 +228,7 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
             //if tooltip is going to be shown after delay, we must cancel this
             $timeout.cancel( popupTimeout );
             
+            // 2013-10-31 Coridyn: Memory leak - disable animation.
             // And now we remove it from the DOM. However, if we have animation, we 
             // need to wait for it to expire beforehand.
             // FIXME: this is a placeholder for a port of the transitions library.
@@ -252,10 +253,11 @@ angular.module( 'ui.bootstrap.tooltip', [ 'ui.bootstrap.position', 'ui.bootstrap
           attrs.$observe( prefix+'Placement', function ( val ) {
             scope.tt_placement = angular.isDefined( val ) ? val : options.placement;
           });
-
-          attrs.$observe( prefix+'Animation', function ( val ) {
-            scope.tt_animation = angular.isDefined( val ) ? $parse( val ) : function(){ return options.animation; };
-          });
+          
+          // 2013-10-31 Coridyn: Memory leak - disable animation.
+          // attrs.$observe( prefix+'Animation', function ( val ) {
+          //   scope.tt_animation = angular.isDefined( val ) ? $parse( val ) : function(){ return options.animation; };
+          // });
 
           attrs.$observe( prefix+'PopupDelay', function ( val ) {
             var delay = parseInt( val, 10 );
