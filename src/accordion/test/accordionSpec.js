@@ -106,7 +106,7 @@ describe('accordion', function () {
     var scope, $compile;
     var element, groups;
     var findGroupLink = function (index) {
-      return groups.eq(index).find('a').eq(0);
+      return groups.eq(index).find('.panel-heading').eq(0);
     };
     var findGroupBody = function (index) {
       return groups.eq(index).find('.panel-collapse').eq(0);
@@ -264,7 +264,7 @@ describe('accordion', function () {
 
     describe('accordion-heading element', function() {
       beforeEach(function() {
-        var tpl = 
+        var tpl =
           '<accordion ng-init="a = [1,2,3]">' +
             '<accordion-group heading="I get overridden">' +
               '<accordion-heading>Heading Element <span ng-repeat="x in a">{{x}}</span> </accordion-heading>' +
@@ -286,7 +286,7 @@ describe('accordion', function () {
 
     describe('accordion-heading attribute', function() {
       beforeEach(function() {
-        var tpl = 
+        var tpl =
           '<accordion ng-init="a = [1,2,3]">' +
             '<accordion-group heading="I get overridden">' +
               '<div accordion-heading>Heading Element <span ng-repeat="x in a">{{x}}</span> </div>' +
