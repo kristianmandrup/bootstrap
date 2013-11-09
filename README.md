@@ -4,6 +4,12 @@
 
 [![Build Status](https://secure.travis-ci.org/angular-ui/bootstrap.png)](http://travis-ci.org/angular-ui/bootstrap)
 
+## Important Version Notice
+
+This branch has the goal of supporting *Angular 1.2.0* and jQuery 1.10+
+
+Please see [DEV_STATUS.md](DEV_STATUS.md) document for the status of this branch.
+
 ## Demo
 
 Do you want to see directives in action? Visit http://angular-ui.github.io/bootstrap/!

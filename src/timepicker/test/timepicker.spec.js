@@ -1,6 +1,6 @@
 
 
-describe('timepicker directive', function () {
+xdescribe('timepicker directive', function () {
   var $rootScope, element;
 
   beforeEach(module('ui.bootstrap.timepicker'));
