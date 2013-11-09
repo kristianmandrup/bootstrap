@@ -110,6 +110,7 @@ angular.mock.$Browser = function() {
       if (self.deferredFns.length) {
         self.defer.now = self.deferredFns[self.deferredFns.length-1].time;
       } else {
+        //console.log('No deferred tasks to be flushed');
         throw Error('No deferred tasks to be flushed');
       }
     }

@@ -66,6 +66,12 @@ angular.module('ui.bootstrap.accordion', ['ui.bootstrap.collapse'])
       this.setHeading = function(element) {
         this.heading = element;
       };
+      
+      // 2013-10-31 Coridyn: Memory leak.
+      var self = this;
+      $scope.$on('$destroy', function(){
+        self.heading = null;
+      });
     }],
     link: function(scope, element, attrs, accordionCtrl) {
       var getIsOpen, setIsOpen;

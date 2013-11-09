@@ -158,9 +158,9 @@ describe('tooltip', function() {
       expect(elmScope.tt_isOpen).toBe(false);
 
       elm.trigger('mouseleave');
-      $timeout.flush();
+      // $timeout.flush();
       expect(elmScope.tt_isOpen).toBe(false);
-    }));
+    }));    
 
     it('should use default popup delay if specified delay is not a number', function(){
       scope.delay='text1000';
@@ -296,13 +296,11 @@ describe('tooltip', function() {
       expect( inCache() ).toBeFalsy();
     });
 
-    it( 'should not contain a cached reference when visible', inject( function( $timeout ) {
+    it( 'should not contain a cached reference', function() {
       expect( inCache() ).toBeTruthy();
-      elm.trigger('fooTrigger');
       elmScope.$destroy();
-      $timeout.flush();
       expect( inCache() ).toBeFalsy();
-    }));
+    });
   });
 });
 

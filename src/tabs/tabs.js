@@ -97,6 +97,13 @@ function TabsetCtrl($scope, $element) {
         scope.tabsAbove = (scope.direction != 'below');
         tabsetCtrl.$scope = scope;
         tabsetCtrl.$transcludeFn = transclude;
+        
+        // 2013-10-30 Coridyn: Possible memory leak here.
+        scope.$on('$destroy', function(){
+          // Clear the scope and transclude functions.
+          tabsetCtrl.$scope = null;
+          tabsetCtrl.$transcludeFn = null;
+        });
       };
     }
   };
@@ -248,6 +255,11 @@ function($parse, $http, $templateCache, $compile) {
         //We need to transclude later, once the content container is ready.
         //when this link happens, we're inside a tab heading.
         scope.$transcludeFn = transclude;
+        
+        // 2013-10-31 Coridyn: Memory leak; clear the transclude function. 
+        scope.$on('$destroy', function(){
+          scope.$transcludeFn = null;
+        });
       };
     }
   };
