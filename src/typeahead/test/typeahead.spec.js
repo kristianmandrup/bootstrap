@@ -48,7 +48,7 @@ describe('typeahead tests', function () {
   };
 
   var findDropDown = function (element) {
-    return element.find('ul.typeahead');
+    return element.find('ul');
   };
 
   var findMatches = function (element) {

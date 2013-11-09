@@ -6,7 +6,11 @@
 			<button type="button" class="btn btn-small btn-inverse" ng-click="today()">{{currentText}}</button>
 			<button type="button" class="btn btn-small btn-info" ng-click="showWeeks = ! showWeeks" ng-class="{active: showWeeks}">{{toggleWeeksText}}</button>
 			<button type="button" class="btn btn-small btn-danger" ng-click="clear()">{{clearText}}</button>
+			<button type="button" class="btn btn-small btn-success pull-right" ng-click="isOpen = false">{{closeText}}</button>
+			<button class="btn btn-xs btn-default" ng-click="today()">Today</button>
+			<button class="btn btn-xs btn-info" ng-click="showWeeks = ! showWeeks" ng-class="{active: showWeeks}">Weeks</button>
+			<button class="btn btn-xs btn-danger" ng-click="clear()">Clear</button>
 		</span>
-		<button type="button" class="btn btn-small btn-success pull-right" ng-click="isOpen = false">{{closeText}}</button>
+		<button class="btn btn-xs btn-success pull-right" ng-click="isOpen = false">Close</button>
 	</li>
 </ul>

@@ -71,10 +71,10 @@ describe('timepicker directive', function () {
     return e;
   }
 
-  it('contains three row & three input elements', function() {
+  it('contains three row, four input and two button elements', function() {
     expect(element.find('tr').length).toBe(3);
-    expect(element.find('input').length).toBe(2);
-    expect(element.find('button').length).toBe(1);
+    expect(element.find('input').length).toBe(4);
+    expect(element.find('button').length).toBe(2);
   });
 
   it('has initially the correct time & meridian', function() {
@@ -852,4 +852,3 @@ describe('timepicker directive', function () {
   });
 
 });
-

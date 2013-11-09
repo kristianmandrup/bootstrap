@@ -9,15 +9,41 @@ angular.module('ui.bootstrap.transition', [])
  *   - As a function, it represents a function to be called that will cause the transition to occur.
  * @return {Promise}  A promise that is resolved when the transition finishes.
  */
-.factory('$transition', ['$q', '$timeout', '$rootScope', function($q, $timeout, $rootScope) {
+.factory('$transition', ['$q', '$timeout', function($q, $timeout) {
+
+  // Work out the name of the transitionEnd event
+  var transElement = document.createElement('trans');
+  var transitionEndEventNames = {
+    'WebkitTransition': 'webkitTransitionEnd',
+    'MozTransition': 'transitionend',
+    'OTransition': 'oTransitionEnd',
+    'transition': 'transitionend'
+  };
+  var animationEndEventNames = {
+    'WebkitTransition': 'webkitAnimationEnd',
+    'MozTransition': 'animationend',
+    'OTransition': 'oAnimationEnd',
+    'transition': 'animationend'
+  };
+
+  function findEndEventName(endEventNames) {
+    for (var name in endEventNames){
+      if (transElement.style[name] !== undefined) {
+        return endEventNames[name];
+      }
+    }
+  }
+
+  var transitionEndEventName = findEndEventName(transitionEndEventNames);
+  var animationEndEventName = findEndEventName(animationEndEventNames);
 
   var $transition = function(element, trigger, options) {
     options = options || {};
     var deferred = $q.defer();
-    var endEventName = $transition[options.animation ? "animationEndEventName" : "transitionEndEventName"];
+    var endEventName = options.animation ? animationEndEventName : transitionEndEventName;
 
     var transitionEndHandler = function(event) {
-      $rootScope.$apply(function() {
+      $timeout(function(){
         element.unbind(endEventName, transitionEndHandler);
         deferred.resolve(element);
       });
@@ -36,7 +62,7 @@ angular.module('ui.bootstrap.transition', [])
       } else if ( angular.isObject(trigger) ) {
         element.css(trigger);
       }
-      //If browser does not support transitions, instantly resolve
+
       if ( !endEventName ) {
         deferred.resolve(element);
       }
@@ -55,28 +81,8 @@ angular.module('ui.bootstrap.transition', [])
     return deferred.promise;
   };
 
-  // Work out the name of the transitionEnd event
-  var transElement = document.createElement('trans');
-  var transitionEndEventNames = {
-    'WebkitTransition': 'webkitTransitionEnd',
-    'MozTransition': 'transitionend',
-    'OTransition': 'oTransitionEnd',
-    'transition': 'transitionend'
-  };
-  var animationEndEventNames = {
-    'WebkitTransition': 'webkitAnimationEnd',
-    'MozTransition': 'animationend',
-    'OTransition': 'oAnimationEnd',
-    'transition': 'animationend'
-  };
-  function findEndEventName(endEventNames) {
-    for (var name in endEventNames){
-      if (transElement.style[name] !== undefined) {
-        return endEventNames[name];
-      }
-    }
-  }
-  $transition.transitionEndEventName = findEndEventName(transitionEndEventNames);
-  $transition.animationEndEventName = findEndEventName(animationEndEventNames);
+  $transition.transitionEndEventName = transitionEndEventName;
+  $transition.animationEndEventName = animationEndEventName;
+
   return $transition;
 }]);
