@@ -35,8 +35,121 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
   var HOT_KEYS = [9, 13, 27, 38, 40];
 
   return {
-    require:'ngModel',
-    link:function (originalScope, element, attrs, modelCtrl) {
+    require:['typeahead', 'ngModel'],
+    controller: ['$scope', '$element', '$attrs',
+    function TypeaheadController($scope, $element, $attrs) {
+
+      //binding to a variable that indicates if matches are being retrieved asynchronously
+      var isLoadingSetter = $parse($attrs.typeaheadLoading).assign || angular.noop;
+      var $setModelValue = $parse($attrs.ngModel).assign || angular.noop;
+
+      // Use controller to sync up stuff
+      this.matches = [];
+      this.active = -1;
+      //we need to propagate user's query so we can higlight matches
+      this.query = undefined;
+
+      this.resetMatches = function () {
+        this.matches = [];
+        this.active = -1;
+      };
+
+      // Run on query init
+      this.queryParsers = [];
+
+      // Run on select
+      this.selectListeners = [];
+
+      //expressions used by typeahead
+      this.parserResult = typeaheadParser.parse($attrs.typeahead);
+
+      this.initQuery = function (queryInput) {
+        var q = $q.when(queryInput);
+        // run query processors asynchronously
+        for (var i = 0; i < this.queryParsers.length; i++) {
+          q = q.then(this.queryParsers[i].bind(this));
+        }
+        // then finally, get matches
+        return q.then(this.getMatches.bind(this));
+      };
+
+      this.matchProcessor = function (inputValue, match) {
+        var locals = {$viewValue: inputValue};
+        locals[this.parserResult.itemName] = match;
+        return {
+          label: this.parserResult.viewMapper($scope, locals),
+          model: match
+        };
+      };
+
+      // getMatches skips query parsers
+      this.getMatches = function (inputValue) {
+        var ctrl = this;
+        var locals = {$viewValue: inputValue};
+        // Is loading
+        isLoadingSetter($scope, true);
+
+        this.query = inputValue;
+        $q.when(this.parserResult.source($scope, locals)).then(function(matches) {
+
+          //it might happen that several async queries were in progress if a user were typing fast
+          //but we are interested only in responses that correspond to the current view value
+          if (inputValue === ctrl.query) {
+            if (matches.length > 0) {
+
+              ctrl.active = 0;
+
+              //transform labels
+              ctrl.matches = matches.map(ctrl.matchProcessor.bind(ctrl, inputValue));
+
+              // TODO: This might be the responsibility of the typeaheadPopup element
+              // After match received, need to set scope position? Or just send this over via scope?
+
+              //position pop-up with matches - we need to re-calculate its position each time we are opening a window
+              //with matches as a pop-up might be absolute-positioned and position of an input might have changed on a page
+              //due to other elements being rendered
+              ctrl.position = $position.position($element);
+              ctrl.position.top = ctrl.position.top + $element.prop('offsetHeight');
+
+            } else {
+              ctrl.resetMatches();
+            }
+            isLoadingSetter($scope, false);
+          }
+        }, function(){
+          ctrl.resetMatches();
+          isLoadingSetter($scope, false);
+        });
+      };
+
+      this.select = function (activeIdx) {
+        var locals = {};
+        var model, item;
+
+        locals[this.parserResult.itemName] = item = this.matches[activeIdx].model;
+        model = this.parserResult.modelMapper($scope, locals);
+        $setModelValue($scope, model);
+
+        for (var i = 0; i < this.selectListeners.length; i++) {
+          // TODO: Wrap in try/catch
+          this.selectListeners[i]($scope, {
+            $item: item,
+            $model: model,
+            $label: this.parserResult.viewMapper($scope, locals)
+          });
+        }
+
+        this.resetMatches();
+
+        //return focus to the input element if a mach was selected via a mouse click event
+        $element[0].focus();
+      };
+
+    }],
+    link:function (originalScope, element, attrs, controllers) {
+
+      var typeaheadCtrl = controllers[0],
+          modelCtrl = controllers[1];
 
       //SUPPORTED ATTRIBUTES (OPTIONS)
 
@@ -49,31 +162,18 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
       //should it restrict model values to the ones selected from the popup only?
       var isEditable = originalScope.$eval(attrs.typeaheadEditable) !== false;
 
-      //binding to a variable that indicates if matches are being retrieved asynchronously
-      var isLoadingSetter = $parse(attrs.typeaheadLoading).assign || angular.noop;
-
-      //a callback executed when a match is selected
-      var onSelectCallback = $parse(attrs.typeaheadOnSelect);
-
       var inputFormatter = attrs.typeaheadInputFormatter ? $parse(attrs.typeaheadInputFormatter) : undefined;
 
       //INTERNAL VARIABLES
 
-      //model setter executed upon match selection
-      var $setModelValue = $parse(attrs.ngModel).assign;
-
-      //expressions used by typeahead
-      var parserResult = typeaheadParser.parse(attrs.typeahead);
-
-
       //pop-up element used to display matches
       var popUpEl = angular.element('<typeahead-popup></typeahead-popup>');
       popUpEl.attr({
-        matches: 'matches',
-        active: 'activeIdx',
-        select: 'select(activeIdx)',
-        query: 'query',
-        position: 'position'
+        matches : 'typeaheadCtrl.matches',
+        active  : 'typeaheadCtrl.active',
+        select  : 'typeaheadCtrl.select(activeIdx)',
+        query   : 'typeaheadCtrl.query',
+        position: 'typeaheadCtrl.position'
       });
       //custom item template
       if (angular.isDefined(attrs.typeaheadTemplateUrl)) {
@@ -83,82 +183,52 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
       //create a child scope for the typeahead directive so we are not polluting original scope
       //with typeahead-specific data (matches, query etc.)
       var scope = originalScope.$new();
+      //share typeaheadCtrl through scope (since this popUpEl is a sibling, can't use require)
+      scope.typeaheadCtrl = typeaheadCtrl;
+
       originalScope.$on('$destroy', function(){
         scope.$destroy();
       });
 
-      var resetMatches = function() {
-        scope.matches = [];
-        scope.activeIdx = -1;
-      };
+      typeaheadCtrl.resetMatches();
 
-      var getMatchesAsync = function(inputValue) {
-
-        var locals = {$viewValue: inputValue};
-        isLoadingSetter(originalScope, true);
-        $q.when(parserResult.source(scope, locals)).then(function(matches) {
-
-          //it might happen that several async queries were in progress if a user were typing fast
-          //but we are interested only in responses that correspond to the current view value
-          if (inputValue === modelCtrl.$viewValue) {
-            if (matches.length > 0) {
-
-              scope.activeIdx = 0;
-              scope.matches.length = 0;
-
-              //transform labels
-              for(var i=0; i<matches.length; i++) {
-                locals[parserResult.itemName] = matches[i];
-                scope.matches.push({
-                  label: parserResult.viewMapper(scope, locals),
-                  model: matches[i]
-                });
-              }
-
-              scope.query = inputValue;
-              //position pop-up with matches - we need to re-calculate its position each time we are opening a window
-              //with matches as a pop-up might be absolute-positioned and position of an input might have changed on a page
-              //due to other elements being rendered
-              scope.position = $position.position(element);
-              scope.position.top = scope.position.top + element.prop('offsetHeight');
-
-            } else {
-              resetMatches();
-            }
-            isLoadingSetter(originalScope, false);
+      if (minSearch) {
+        typeaheadCtrl.queryParsers.push(function (query) {
+          if (query && query.length >= minSearch) {
+            return query;
           }
-        }, function(){
-          resetMatches();
-          isLoadingSetter(originalScope, false);
+          // This short-circuits the query parsing
+          return $q.reject('Query shorter than min length.');
         });
-      };
-
-      resetMatches();
-
-      //we need to propagate user's query so we can higlight matches
-      scope.query = undefined;
+      }
 
       //Declare the timeout promise var outside the function scope so that stacked calls can be cancelled later 
       var timeoutPromise;
 
+      if (waitTime > 0) {
+        typeaheadCtrl.queryParsers.push(function (query) {
+          if (timeoutPromise) {
+            $timeout.cancel(timeoutPromise);//cancel previous timeout
+            timeoutPromise = null;
+          }
+          timeoutPromise = $timeout(function () {
+            return query;
+          }, waitTime);
+          return timeoutPromise;
+        });
+      }
+
       //plug into $parsers pipeline to open a typeahead on view changes initiated from DOM
       //$parsers kick-in on all the changes coming from the view as well as manually triggered by $setViewValue
+
+      // TODO: This seems like a hack and really should be listening to input events
+      // This also depends on the ngModel controller
       modelCtrl.$parsers.unshift(function (inputValue) {
 
-        resetMatches();
-        if (inputValue && inputValue.length >= minSearch) {
-          if (waitTime > 0) {
-            if (timeoutPromise) {
-              $timeout.cancel(timeoutPromise);//cancel previous timeout
-            }
-            timeoutPromise = $timeout(function () {
-              getMatchesAsync(inputValue);
-            }, waitTime);
-          } else {
-            getMatchesAsync(inputValue);
-          }
-        }
+        typeaheadCtrl.resetMatches();
+        typeaheadCtrl.initQuery(inputValue);
 
+        // This really might be another
         if (isEditable) {
           return inputValue;
         } else {
@@ -172,6 +242,7 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
         var candidateViewValue, emptyViewValue;
         var locals = {};
 
+        // This might be in another directive too?
         if (inputFormatter) {
 
           locals['$model'] = modelValue;
@@ -181,64 +252,46 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
 
           //it might happen that we don't have enough info to properly render input value
           //we need to check for this situation and simply return model value if we can't apply custom formatting
-          locals[parserResult.itemName] = modelValue;
-          candidateViewValue = parserResult.viewMapper(originalScope, locals);
-          locals[parserResult.itemName] = undefined;
-          emptyViewValue = parserResult.viewMapper(originalScope, locals);
+          locals[typeaheadCtrl.parserResult.itemName] = modelValue;
+          candidateViewValue = typeaheadCtrl.parserResult.viewMapper(originalScope, locals);
+          locals[typeaheadCtrl.parserResult.itemName] = undefined;
+          emptyViewValue = typeaheadCtrl.parserResult.viewMapper(originalScope, locals);
 
           return candidateViewValue!== emptyViewValue ? candidateViewValue : modelValue;
         }
       });
 
-      scope.select = function (activeIdx) {
-        //called from within the $digest() cycle
-        var locals = {};
-        var model, item;
-
-        locals[parserResult.itemName] = item = scope.matches[activeIdx].model;
-        model = parserResult.modelMapper(originalScope, locals);
-        $setModelValue(originalScope, model);
+      typeaheadCtrl.selectListeners.push(function () {
         modelCtrl.$setValidity('editable', true);
-
-        onSelectCallback(originalScope, {
-          $item: item,
-          $model: model,
-          $label: parserResult.viewMapper(originalScope, locals)
-        });
-
-        resetMatches();
-
-        //return focus to the input element if a mach was selected via a mouse click event
-        element[0].focus();
-      };
+      });
 
       //bind keyboard events: arrows up(38) / down(40), enter(13) and tab(9), esc(27)
       element.bind('keydown', function (evt) {
 
         //typeahead is open and an "interesting" key was pressed
-        if (scope.matches.length === 0 || HOT_KEYS.indexOf(evt.which) === -1) {
+        if (typeaheadCtrl.matches.length === 0 || HOT_KEYS.indexOf(evt.which) === -1) {
           return;
         }
 
         evt.preventDefault();
 
         if (evt.which === 40) {
-          scope.activeIdx = (scope.activeIdx + 1) % scope.matches.length;
+          typeaheadCtrl.active = (typeaheadCtrl.active + 1) % typeaheadCtrl.matches.length;
           scope.$digest();
 
         } else if (evt.which === 38) {
-          scope.activeIdx = (scope.activeIdx ? scope.activeIdx : scope.matches.length) - 1;
+          typeaheadCtrl.active = (typeaheadCtrl.active ? typeaheadCtrl.active : typeaheadCtrl.matches.length) - 1;
           scope.$digest();
 
         } else if (evt.which === 13 || evt.which === 9) {
           scope.$apply(function () {
-            scope.select(scope.activeIdx);
+            typeaheadCtrl.select(typeaheadCtrl.active);
           });
 
         } else if (evt.which === 27) {
           evt.stopPropagation();
 
-          resetMatches();
+          typeaheadCtrl.resetMatches();
           scope.$digest();
         }
       });
@@ -246,7 +299,7 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
       // Keep reference to click handler to unbind it.
       var dismissClickHandler = function (evt) {
         if (element[0] !== evt.target) {
-          resetMatches();
+          typeaheadCtrl.resetMatches();
           scope.$digest();
         }
       };
@@ -262,6 +315,20 @@ angular.module('ui.bootstrap.typeahead', ['ui.bootstrap.position', 'ui.bootstrap
   };
 
 }])
+
+  .directive('typeaheadOnSelect', ['$parse', function ($parse) {
+    return {
+      restrict:'A',
+      require: 'typeahead',
+      link:function (scope, element, attrs, typeaheadCtrl) {
+
+        //a callback executed when a match is selected
+        var onSelectCallback = $parse(attrs.typeaheadOnSelect);
+        typeaheadCtrl.selectListeners.push(onSelectCallback);
+
+      }
+    };
+  }])
 
   .directive('typeaheadPopup', function () {
     return {
